@@ -153,27 +153,35 @@ def apply_effect():
         return jsonify({'ok': False, 'error': 'no frame yet'}), 400
 
     start_time = time.perf_counter()
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    img = Image.fromarray(rgb)
 
-    if effect == 'grayscale':
-        img = ImageOps.grayscale(img)
-    elif effect == 'gaussian_blur':
-        img = img.filter(ImageFilter.GaussianBlur(radius=2))
-    elif effect == 'contour':
-        img = img.filter(ImageFilter.CONTOUR)
-    elif effect == 'edge_enhance':
-        img = img.filter(ImageFilter.EDGE_ENHANCE)
-    elif effect == 'emboss':
-        img = img.filter(ImageFilter.EMBOSS)
-    elif effect == 'sharpen':
-        img = img.filter(ImageFilter.SHARPEN)
+    if effect == 'median_blur':
+        processed = cv2.medianBlur(frame, 5)
+        ret, jpg = cv2.imencode('.jpg', processed, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+        if not ret:
+            return jsonify({'ok': False, 'error': 'encode_failed'}), 500
+        b64 = base64.b64encode(jpg.tobytes()).decode('utf-8')
     else:
-        return jsonify({'ok': False, 'error': 'unsupported effect'}), 400
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img = Image.fromarray(rgb)
 
-    buf = io.BytesIO()
-    img.save(buf, format='JPEG', quality=90)
-    b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+        if effect == 'grayscale':
+            img = ImageOps.grayscale(img)
+        elif effect == 'gaussian_blur':
+            img = img.filter(ImageFilter.GaussianBlur(radius=2))
+        elif effect == 'contour':
+            img = img.filter(ImageFilter.CONTOUR)
+        elif effect == 'edge_enhance':
+            img = img.filter(ImageFilter.EDGE_ENHANCE)
+        elif effect == 'emboss':
+            img = img.filter(ImageFilter.EMBOSS)
+        elif effect == 'sharpen':
+            img = img.filter(ImageFilter.SHARPEN)
+        else:
+            return jsonify({'ok': False, 'error': 'unsupported effect'}), 400
+
+        buf = io.BytesIO()
+        img.save(buf, format='JPEG', quality=90)
+        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
     data_uri = 'data:image/jpeg;base64,' + b64
     process_time_ms = (time.perf_counter() - start_time) * 1000
 
