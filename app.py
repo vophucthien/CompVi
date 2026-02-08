@@ -4,8 +4,6 @@ import threading
 import time
 import base64
 import numpy as np
-import io
-from PIL import Image, ImageFilter, ImageOps
 from process import ImageProcessor
 from camera import VideoCamera
 app = Flask(__name__)
@@ -154,34 +152,45 @@ def apply_effect():
 
     start_time = time.perf_counter()
 
-    if effect == 'median_blur':
-        processed = cv2.medianBlur(frame, 5)
-        ret, jpg = cv2.imencode('.jpg', processed, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
-        if not ret:
-            return jsonify({'ok': False, 'error': 'encode_failed'}), 500
-        b64 = base64.b64encode(jpg.tobytes()).decode('utf-8')
+    if effect == 'grayscale':
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        result = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    elif effect == 'gaussian_blur':
+        result = cv2.GaussianBlur(frame, (31, 31), 0)
+    elif effect == 'median_blur':
+        result = cv2.medianBlur(frame, 5)
+    elif effect == 'sobel_x':
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        sobel = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
+        sobel = cv2.convertScaleAbs(sobel)
+        result = cv2.cvtColor(sobel, cv2.COLOR_GRAY2BGR)
+    elif effect == 'laplacian':
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        lap = cv2.Laplacian(gray, cv2.CV_64F)
+        lap = cv2.convertScaleAbs(lap)
+        result = cv2.cvtColor(lap, cv2.COLOR_GRAY2BGR)
+    elif effect == 'sharpen':
+        kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]], dtype=np.float32)
+        result = cv2.filter2D(frame, -1, kernel)
+    elif effect == 'bilateral':
+        result = cv2.bilateralFilter(frame, 9, 75, 75)
+    elif effect == 'threshold':
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
+        result = cv2.cvtColor(thresh, cv2.COLOR_GRAY2BGR)
+    elif effect == 'erosion':
+        kernel = np.ones((3, 3), np.uint8)
+        result = cv2.erode(frame, kernel, iterations=1)
+    elif effect == 'dilation':
+        kernel = np.ones((3, 3), np.uint8)
+        result = cv2.dilate(frame, kernel, iterations=1)
     else:
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img = Image.fromarray(rgb)
+        return jsonify({'ok': False, 'error': 'unsupported effect'}), 400
 
-        if effect == 'grayscale':
-            img = ImageOps.grayscale(img)
-        elif effect == 'gaussian_blur':
-            img = img.filter(ImageFilter.GaussianBlur(radius=2))
-        elif effect == 'contour':
-            img = img.filter(ImageFilter.CONTOUR)
-        elif effect == 'edge_enhance':
-            img = img.filter(ImageFilter.EDGE_ENHANCE)
-        elif effect == 'emboss':
-            img = img.filter(ImageFilter.EMBOSS)
-        elif effect == 'sharpen':
-            img = img.filter(ImageFilter.SHARPEN)
-        else:
-            return jsonify({'ok': False, 'error': 'unsupported effect'}), 400
-
-        buf = io.BytesIO()
-        img.save(buf, format='JPEG', quality=90)
-        b64 = base64.b64encode(buf.getvalue()).decode('utf-8')
+    ret, jpg = cv2.imencode('.jpg', result, [int(cv2.IMWRITE_JPEG_QUALITY), 90])
+    if not ret:
+        return jsonify({'ok': False, 'error': 'encode_failed'}), 500
+    b64 = base64.b64encode(jpg.tobytes()).decode('utf-8')
     data_uri = 'data:image/jpeg;base64,' + b64
     process_time_ms = (time.perf_counter() - start_time) * 1000
 

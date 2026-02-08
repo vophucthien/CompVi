@@ -75,13 +75,16 @@
 
       <label for="effect-type">Effect</label>
       <select id="effect-type">
-        <option value="grayscale">Grayscale</option>
+        <option value="grayscale">Grayscale Conversion</option>
         <option value="gaussian_blur">Gaussian Blur</option>
         <option value="median_blur">Median Blur</option>
-        <option value="contour">Contour</option>
-        <option value="edge_enhance">Edge Enhance</option>
-        <option value="emboss">Emboss</option>
-        <option value="sharpen">Sharpen</option>
+        <option value="sobel_x">Sobel Edge Detection (X Direction)</option>
+        <option value="laplacian">Laplacian Edge Detection</option>
+        <option value="sharpen">Sharpening Filter</option>
+        <option value="bilateral">Bilateral Filter</option>
+        <option value="threshold">Thresholding (Binary)</option>
+        <option value="erosion">Erosion (Morphological Filtering)</option>
+        <option value="dilation">Dilation (Morphological Filtering)</option>
       </select>
 
       <button onclick="applyEffect()">Apply</button>
